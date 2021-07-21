@@ -6,3 +6,6 @@ dist/
 screenshots/
 cli/
 favicon.png
+.config.json
+.users.json
+.tokens.json
