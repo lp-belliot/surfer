@@ -28,3 +28,5 @@ pnpm-debug.log*
 .users.json
 .nginx-users.txt
 favicon.png
+
+deployment/*/credentials.yml
