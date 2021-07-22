@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  namespace: surfer-static
+  name: lo-static-ingress
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: surfer-static
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: 250m
+spec:
+  tls:
+    - hosts:
+        - static.liveperson-apac.com
+      secretName: surfer-static-ssl-cert
+  rules:
+    - host: "static.liveperson-apac.com"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: lp-static-service
+                port:
+                  number: 80
