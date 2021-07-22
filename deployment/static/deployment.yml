@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: surfer-static
+  name: lp-static-deployment
+spec:
+  selector:
+    matchLabels:
+      app: lp-static
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: lp-static
+    spec:
+      containers:
+        - name: lp-static
+          image: lpbelliot/surfer_static:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+          env:
+            - name: LOCAL_AUTH_FILE
+              value: /app/credentials/.users.json
+          volumeMounts:
+            - mountPath: "/app/data/public"
+              name: lp-static-volume
+            - mountPath: "/app/credentials"
+              name: lp-static-users
+      volumes:
+        - name: lp-static-volume
+          persistentVolumeClaim:
+            claimName: lp-static-volume
+        - name: lp-static-users
+          secret:
+            secretName: lp-static-users
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: surfer-static
+  name: lp-static-service
+spec:
+  type: ClusterIP
+  ports:
+    - name: app
+      port: 80
+      targetPort: 3000
+  selector:
+    app: lp-static
