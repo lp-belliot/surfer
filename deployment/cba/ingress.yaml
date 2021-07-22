@@ -15,7 +15,7 @@ spec:
   tls:
     - hosts:
         - cba.liveperson-apac.com
-      secretName: surfer-static-ssl-cert
+      secretName: cba-surfer-static-ssl-cert
   rules:
     - host: "cba.liveperson-apac.com"
       http:
