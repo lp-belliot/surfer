@@ -23,10 +23,8 @@ pnpm-debug.log*
 *.sw?
 
 /files
-.config.json
 .tokens.json
 .users.json
 .nginx-users.txt
-favicon.png
 
 deployment/*/credentials.yml
