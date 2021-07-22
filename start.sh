@@ -12,4 +12,8 @@ echo "=> Ensure permissions"
 chown -R cloudron:cloudron /app/data
 
 echo "=> Start the server"
-exec /usr/local/bin/gosu cloudron:cloudron node /app/code/server.js /app/data/public /app/data/.config.json /app/data/favicon.png
+exec /usr/local/bin/gosu cloudron:cloudron node /app/code/server.js \
+  /app/data/public \
+  /app/data/.config.json\
+  /app/data/favicon.png \
+  $SESSION_SECRET

@@ -26,6 +26,7 @@ var express = require('express'),
 const ROOT_FOLDER = path.resolve(__dirname, process.argv[2] || 'files');
 const CONFIG_FILE = path.resolve(__dirname, process.argv[3] || '.config.json');
 const FAVICON_FILE = path.resolve(__dirname, process.argv[4] || 'favicon.png');
+const SESSION_SECRET = path.resolve(__dirname, process.argv[5] || 'insecure-session-secret-default');
 const FAVICON_FALLBACK_FILE = path.resolve(__dirname, 'dist', 'logo.png');
 
 const PASSWORD_PLACEHOLDER = '__PLACEHOLDER__';
@@ -71,7 +72,7 @@ function setSettings(req, res, next) {
     if ('accessPassword' in req.body && typeof req.body.accessPassword !== 'string') return next(new HttpError(400, 'accessPassword must be a string'));
 
     function clearNonAdminSessions(callback) {
-        callback = callback || function () {};
+        callback = callback || function () { };
 
         sessionStore.all(function (error, sessions) {
             if (error) return console.error('Failed to get sessions.', error);
@@ -196,7 +197,7 @@ function protectedLogin(req, res, next) {
 function send404(res) {
     // first check if /404.htm(l) exists, if so send that
     if (fs.existsSync(path.join(ROOT_FOLDER, '404.html'))) return res.status(404).sendFile(path.join(ROOT_FOLDER, '404.html'));
-    if (fs.existsSync(path.join(ROOT_FOLDER, '404.htm' ))) return res.status(404).sendFile(path.join(ROOT_FOLDER, '404.htm'));
+    if (fs.existsSync(path.join(ROOT_FOLDER, '404.htm'))) return res.status(404).sendFile(path.join(ROOT_FOLDER, '404.htm'));
 
     res.status(404).sendFile(__dirname + '/dist/404.html');
 }
@@ -237,30 +238,30 @@ const PUBLIC_NOSCRIPT_EJS = fs.readFileSync(__dirname + '/frontend/public.noscri
 
 var multipart = multipart({ maxFieldsSize: 2 * 1024, limit: '512mb', timeout: 3 * 60 * 1000 });
 
-router.post  ('/api/protectedLogin', protectedLogin);
-router.post  ('/api/login', auth.login);
-router.post  ('/api/logout', auth.verify, auth.logout);
-router.get   ('/api/settings', getSettings);
-router.get   ('/api/favicon', getFavicon);
-router.put   ('/api/favicon', auth.verify, multipart, setFavicon);
+router.post('/api/protectedLogin', protectedLogin);
+router.post('/api/login', auth.login);
+router.post('/api/logout', auth.verify, auth.logout);
+router.get('/api/settings', getSettings);
+router.get('/api/favicon', getFavicon);
+router.put('/api/favicon', auth.verify, multipart, setFavicon);
 router.delete('/api/favicon', auth.verify, resetFavicon);
-router.put   ('/api/settings', auth.verify, setSettings);
-router.get   ('/api/tokens', auth.verify, auth.getTokens);
-router.post  ('/api/tokens', auth.verify, auth.createToken);
+router.put('/api/settings', auth.verify, setSettings);
+router.get('/api/tokens', auth.verify, auth.getTokens);
+router.post('/api/tokens', auth.verify, auth.createToken);
 router.delete('/api/tokens/:token', auth.verify, auth.delToken);
-router.get   ('/api/profile', auth.verify, auth.getProfile);
-router.get   ('/api/files/*', files.get);
-router.post  ('/api/files/*', auth.verify, multipart, files.post);
-router.put   ('/api/files/*', auth.verify, files.put);
+router.get('/api/profile', auth.verify, auth.getProfile);
+router.get('/api/files/*', files.get);
+router.post('/api/files/*', auth.verify, multipart, files.post);
+router.put('/api/files/*', auth.verify, files.put);
 router.delete('/api/files/*', auth.verify, files.del);
 
 app.use('/api/healthcheck', function (req, res) { res.status(200).send(); });
 app.use(morgan('dev'));
 app.use(compression());
-app.use(cors({ origins: [ '*' ], allowCredentials: false }));
+app.use(cors({ origins: ['*'], allowCredentials: false }));
 app.use('/api', bodyParser.json());
 app.use('/api', bodyParser.urlencoded({ extended: false, limit: '100mb' }));
-app.use(session({ store: sessionStore, secret: 'surfin surfin', resave: false, saveUninitialized: true, cookie: {} }));
+app.use(session({ store: sessionStore, secret: SESSION_SECRET, resave: false, saveUninitialized: true, cookie: {} }));
 app.use(router);
 app.use(webdav.extensions.express('/_webdav', webdavServer));
 app.use('/_admin', express.static(__dirname + '/dist'));
