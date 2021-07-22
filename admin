@@ -2,95 +2,228 @@
 
 'use strict';
 
+
 var program = require('commander'),
     safe = require('safetydance'),
     bcrypt = require('bcryptjs'),
-    path = require('path');
+    path = require('path'),
+    cp = require('child_process');
 
 function exit(error) {
     if (error) console.error(error);
     process.exit(error ? 1 : 0);
 }
 
-var LOCAL_AUTH_FILE = path.resolve(process.env.LOCAL_AUTH_FILE || './.users.json');
+var APP_AUTH_FILE = path.resolve(process.env.APP_AUTH_FILE || './.users.json');
+var NGINX_AUTH_FILE = path.resolve(process.env.NGINX_AUTH_FILE || './.nginx-users.txt');
 
-console.log('Using local auth file: ', LOCAL_AUTH_FILE);
+function encode() {
+    console.log('Using local auth file: ', APP_AUTH_FILE);
+    var appUsers = safe.fs.readFileSync(APP_AUTH_FILE);
+    if (!appUsers) exit('No users. Use `admin user-add-app` to add some.');
+
+    let appBuffer = new Buffer.from(appUsers);
+    let b64AppUsers = appBuffer.toString('base64');
+
+    console.log('Using nginx auth file: ', NGINX_AUTH_FILE);
+    var nginxUsers = safe.fs.readFileSync(NGINX_AUTH_FILE);
+    if (!nginxUsers) exit('No users. Use `admin user-add-nginx` to add some.');
+
+    let nginxBuffer = new Buffer.from(nginxUsers);
+    let b64NginxUsers = nginxBuffer.toString('base64');
+
+    console.log(`App Users:\n${b64AppUsers}\n`);
+    console.log(`Nginx Users:\n${b64NginxUsers}\n`)
+}
 
 function addUser(options) {
+    addUserApp(options);
+    addUserNginx(options);
+}
+
+function addUserApp(options) {
     if (!options.username) exit('missing --username');
     if (!options.password) exit('missing --password');
 
-    var users = safe.require(LOCAL_AUTH_FILE);
+    console.log('Using local auth file: ', APP_AUTH_FILE);
+    var users = safe.require(APP_AUTH_FILE);
     if (!users) users = {};
     if (users[options.username]) exit('User already exists');
 
-    bcrypt.hash(options.password, 8, function(error, hash) {
+    bcrypt.hash(options.password, 8, function (error, hash) {
         users[options.username] = { username: options.username, passwordHash: hash };
-        safe.fs.writeFileSync(LOCAL_AUTH_FILE, JSON.stringify(users, null, 4));
+        safe.fs.writeFileSync(APP_AUTH_FILE, JSON.stringify(users, null, 4));
 
         console.log('Done.');
     });
 }
 
-function editUser(options) {
+function addUserNginx(options) {
     if (!options.username) exit('missing --username');
     if (!options.password) exit('missing --password');
 
-    var users = safe.require(LOCAL_AUTH_FILE);
+    const tempfile = `/tmp/${options.username}`
+    safe.fs.writeFileSync(tempfile, options.password);
+    const writeFlag = safe.fs.existsSync(NGINX_AUTH_FILE) ? '' : '-c';
+    const command = `htpasswd -i ${writeFlag} ${NGINX_AUTH_FILE} ${options.username} < ${tempfile}`;
+
+    cp.exec(command, (err) => {
+        if (err) {
+            console.log("There was an error: ", err);
+        } else {
+            safe.fs.writeFileSync(tempfile, '');
+            console.log('Done.');
+        }
+    })
+}
+
+function editUser(options) {
+    editUserApp(options);
+    editUserNginx(options);
+}
+
+function editUserApp(options) {
+    if (!options.username) exit('missing --username');
+    if (!options.password) exit('missing --password');
+
+
+    console.log('Using local auth file: ', APP_AUTH_FILE);
+    var users = safe.require(APP_AUTH_FILE);
     if (!users) users = {};
     if (!users[options.username]) exit('No such user');
 
-    bcrypt.hash(options.password, 8, function(error, hash) {
+    bcrypt.hash(options.password, 8, function (error, hash) {
         users[options.username] = { username: options.username, passwordHash: hash };
-        safe.fs.writeFileSync(LOCAL_AUTH_FILE, JSON.stringify(users, null, 4));
+        safe.fs.writeFileSync(APP_AUTH_FILE, JSON.stringify(users, null, 4));
 
         console.log('Done.');
     });
 }
 
+function editUserNginx(options) {
+    addUserNginx(options);
+}
+
 function delUser(options) {
+    delUserApp(options);
+    delUserNginx(options);
+}
+
+function delUserApp(options) {
     if (!options.username) exit('missing --username');
 
-    var users = safe.require(LOCAL_AUTH_FILE);
+    var users = safe.require(APP_AUTH_FILE);
     if (!users) exit('No such user');
 
     if (!users[options.username]) exit('No such user');
 
     delete users[options.username];
-    safe.fs.writeFileSync(LOCAL_AUTH_FILE, JSON.stringify(users, null, 4));
+    safe.fs.writeFileSync(APP_AUTH_FILE, JSON.stringify(users, null, 4));
 
     console.log('Done.');
 }
 
-function listUsers() {
-    var users = safe.require(LOCAL_AUTH_FILE);
-    if (!users) exit('No users. Use `admin user-add` to add some.');
+function delUserNginx(options) {
+    if (!options.username) exit('missing --username');
+
+    const exists = safe.fs.existsSync(NGINX_AUTH_FILE);
+    if (!exists) exit('No such user');
+
+    const command = `htpasswd -i -D ${NGINX_AUTH_FILE} ${options.username}`;
+
+    cp.exec(command, (err, stdout, stderr) => {
+        if (err) {
+            console.log("There was an error: ", err);
+        } else {
+            if (stderr.endsWith('not found\n')) exit('No such user');
+            console.log('Done.');
+        }
+    })
+}
+
+function listUsersApp() {
+    var users = safe.require(APP_AUTH_FILE);
+    if (!users) exit('No users. Use `admin user-add-app` to add some.');
 
     console.log(users);
 }
 
+function listUsersNginx() {
+    console.log('getting users');
+    var bufferOrError = safe.fs.readFileSync(NGINX_AUTH_FILE);
+    if (!bufferOrError) exit('No users file. Use `admin user-add-nginx` to add some.');
+
+    const fullUsers = bufferOrError.toString('ascii').split('\n');
+    fullUsers.pop(); // Remove the final newline as not a user
+    if (fullUsers.length == 0) exit('No users. Use `admin user-add-nginx` to add some.');
+
+    fullUsers.forEach(user => console.log(user.split(":")[0]))
+}
+
 program.version('0.1.0');
 
+program.command('b64encode')
+    .description('Encode both layers auth files to base64')
+    .action(encode);
+
 program.command('user-add')
-    .description('Add local user')
+    .description('Add user to both layers')
     .option('-u --username <username>', 'New username')
     .option('-p --password <password>', 'New password')
     .action(addUser);
 
+program.command('user-add-app')
+    .description('Add app user')
+    .option('-u --username <username>', 'New username')
+    .option('-p --password <password>', 'New password')
+    .action(addUserApp);
+
+program.command('user-add-nginx')
+    .description('Add nginx user')
+    .option('-u --username <username>', 'New username')
+    .option('-p --password <password>', 'New password')
+    .action(addUserNginx);
+
 program.command('user-edit')
-    .description('Edit local user')
+    .description('Edit user in both layers')
     .option('-u --username <username>', 'Username')
     .option('-p --password <password>', 'New password')
     .action(editUser);
 
+program.command('user-edit-app')
+    .description('Edit app user')
+    .option('-u --username <username>', 'Username')
+    .option('-p --password <password>', 'New password')
+    .action(editUserApp);
+
+program.command('user-edit-nginx')
+    .description('Edit nginx user')
+    .option('-u --username <username>', 'Username')
+    .option('-p --password <password>', 'New password')
+    .action(editUserNginx);
+
 program.command('user-del')
-    .description('Delete local user')
+    .description('Delete user in both layers')
     .option('-u --username <username>', 'Username')
     .action(delUser);
 
-program.command('users')
-    .description('List local users')
-    .action(listUsers);
+program.command('user-del-app')
+    .description('Delete app user')
+    .option('-u --username <username>', 'Username')
+    .action(delUserApp);
+
+program.command('user-del-nginx')
+    .description('Delete nginx user')
+    .option('-u --username <username>', 'Username')
+    .action(delUserNginx);
+
+program.command('users-app')
+    .description('List app users')
+    .action(listUsersApp);
+
+program.command('users-nginx')
+    .description('List nginx users')
+    .action(listUsersNginx);
 
 program.parse(process.argv);
 
