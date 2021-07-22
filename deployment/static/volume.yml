@@ -1,0 +1,33 @@
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: surfer-static-restore
+  namespace: surfer-static
+  annotations:
+    pv.kubernetes.io/provisioned-by: dobs.csi.digitalocean.com
+spec:
+  storageClassName: do-block-storage
+  persistentVolumeReclaimPolicy: Delete
+  capacity:
+    storage: 20Gi
+  accessModes:
+    - ReadWriteOnce
+  csi:
+    driver: dobs.csi.digitalocean.com
+    fsType: ext4
+    volumeHandle: 7cdc6dd4-eabd-11eb-b7e0-0a58ac14a3d5
+    volumeAttributes:
+      com.digitalocean.csi/noformat: "true"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: lp-static-volume
+  namespace: surfer-static
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: do-block-storage

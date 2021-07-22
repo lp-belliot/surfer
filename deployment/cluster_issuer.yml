@@ -1,0 +1,16 @@
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: surfer-static
+  namespace: surfer-static
+spec:
+  acme:
+    email: deployment-certificates@systemiphus.com
+    server: https://acme-v02.api.letsencrypt.org/directory
+    preferredChain: "ISRG Root X1"
+    privateKeySecretRef:
+      name: surfer-static-ssl-cert
+    solvers:
+      - http01:
+          ingress:
+            class: nginx

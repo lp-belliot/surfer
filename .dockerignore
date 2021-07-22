@@ -5,4 +5,5 @@ dist/
 .git/
 screenshots/
 cli/
-favicon.png
+.users.json
+.tokens.json
