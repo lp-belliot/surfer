@@ -26,7 +26,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: lp-session-secret
-                  value: session
+                  key: session
           volumeMounts:
             - mountPath: "/app/data/public"
               name: lp-static-volume
