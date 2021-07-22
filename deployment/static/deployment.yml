@@ -22,6 +22,11 @@ spec:
           env:
             - name: LOCAL_AUTH_FILE
               value: /app/credentials/.users.json
+            - name: SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: lp-session-secret
+                  value: session
           volumeMounts:
             - mountPath: "/app/data/public"
               name: lp-static-volume
