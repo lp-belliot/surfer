@@ -26,4 +26,5 @@ pnpm-debug.log*
 .config.json
 .tokens.json
 .users.json
+.nginx-users.txt
 favicon.png
