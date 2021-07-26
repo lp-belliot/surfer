@@ -1,0 +1,30 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  namespace: surfer-static
+  name: cba-delete-static-daily
+spec:
+  schedule: "0 * 1-31 * *"
+  # schedule: "*/1 * * * *"
+  successfulJobsHistoryLimit: 5
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: cba-delete-static-daily
+              image: busybox
+              imagePullPolicy: Always
+              command:
+                - sh
+                - -c
+                - rm -rf /persistent_data/*
+              volumeMounts:
+                - mountPath: "/persistent_data"
+                  name: cba-static-volume
+          restartPolicy: Never
+          volumes:
+            - name: cba-static-volume
+              persistentVolumeClaim:
+                claimName: cba-static-volume
